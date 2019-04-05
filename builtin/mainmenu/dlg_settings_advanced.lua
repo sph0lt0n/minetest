@@ -522,8 +522,10 @@ local function get_current_np_group_as_string(setting)
 			value.seed .. ", " ..
 			value.octaves .. ", " ..
 			value.persistence .. ", " ..
-			value.lacunarity .. ", " ..
-			value.flags
+			value.lacunarity
+		if value.flags ~= "" then
+			t = t .. ", " .. value.flags
+		end
 	end
 	return t
 end
@@ -597,25 +599,26 @@ local function create_change_setting_formspec(dialogdata)
 		end
 		-- First row
 		height = height + 0.3
-		add_field(0.3, "te_offset", "Offset", t[1])
-		add_field(3.6, "te_scale",  "Scale",  t[2])
-		add_field(6.9, "te_seed",   "Seed",   t[6])
+		add_field(0.3, "te_offset", fgettext("Offset"), t[1])
+		add_field(3.6, "te_scale",  fgettext("Scale"),  t[2])
+		add_field(6.9, "te_seed",   fgettext("Seed"),   t[6])
 		height = height + 1.1
 
 		-- Second row
-		add_field(0.3, "te_spreadx", "X spread", t[3])
+		add_field(0.3, "te_spreadx", fgettext("X spread"), t[3])
 		if dimension == 3 then
-			add_field(3.6, "te_spready", "Y spread", t[4])
+			add_field(3.6, "te_spready", fgettext("Y spread"), t[4])
 		else
-			fields[#fields + 1] = "label[4," .. height - 0.2 .. ";2D Noise]"
+			fields[#fields + 1] = "label[4," .. height - 0.2 .. ";" ..
+					fgettext("2D Noise") .. "]"
 		end
-		add_field(6.9, "te_spreadz", "Z spread", t[5])
+		add_field(6.9, "te_spreadz", fgettext("Z spread"), t[5])
 		height = height + 1.1
 
 		-- Third row
-		add_field(0.3, "te_octaves", "Octaves",     t[7])
-		add_field(3.6, "te_persist", "Persistance", t[8])
-		add_field(6.9, "te_lacun",   "Lacunarity",  t[9])
+		add_field(0.3, "te_octaves", fgettext("Octaves"),     t[7])
+		add_field(3.6, "te_persist", fgettext("Persistance"), t[8])
+		add_field(6.9, "te_lacun",   fgettext("Lacunarity"),  t[9])
 		height = height + 1.1
 
 
@@ -625,13 +628,21 @@ local function create_change_setting_formspec(dialogdata)
 			-- Index by name, to avoid iterating over all enabled_flags for every possible flag.
 			flags[name] = true
 		end
+		for _, name in ipairs(setting.flags) do
+			local checkbox_name = "cb_" .. name
+			local is_enabled = flags[name] == true -- to get false if nil
+			checkboxes[checkbox_name] = is_enabled
+		end
 		-- Flags
 		formspec = table.concat(fields)
-				.. "checkbox[0.5," .. height - 0.6 .. ";cb_defaults;defaults;" -- defaults
+				.. "checkbox[0.5," .. height - 0.6 .. ";cb_defaults;"
+				.. fgettext("defaults") .. ";" -- defaults
 				.. tostring(flags["defaults"] == true) .. "]" -- to get false if nil
-				.. "checkbox[5," .. height - 0.6 .. ";cb_eased;eased;" -- eased
+				.. "checkbox[5," .. height - 0.6 .. ";cb_eased;"
+				.. fgettext("eased") .. ";" -- eased
 				.. tostring(flags["eased"] == true) .. "]"
-				.. "checkbox[5," .. height - 0.15 .. ";cb_absvalue;absvalue;" -- absvalue
+				.. "checkbox[5," .. height - 0.15 .. ";cb_absvalue;"
+				.. fgettext("absvalue") .. ";" -- absvalue
 				.. tostring(flags["absvalue"] == true) .. "]"
 		height = height + 1
 
@@ -644,11 +655,14 @@ local function create_change_setting_formspec(dialogdata)
 
 		height = height + 0.3
 		formspec = formspec
-				.. "field[0.3," .. height .. ";3.3,1;te_x;X;" -- X
+				.. "field[0.3," .. height .. ";3.3,1;te_x;"
+				.. fgettext("X") .. ";" -- X
 				.. core.formspec_escape(v3f[1] or "") .. "]"
-				.. "field[3.6," .. height .. ";3.3,1;te_y;Y;" -- Y
+				.. "field[3.6," .. height .. ";3.3,1;te_y;"
+				.. fgettext("Y") .. ";" -- Y
 				.. core.formspec_escape(v3f[2] or "") .. "]"
-				.. "field[6.9," .. height .. ";3.3,1;te_z;Z;" -- Z
+				.. "field[6.9," .. height .. ";3.3,1;te_z;"
+				.. fgettext("Z") .. ";" -- Z
 				.. core.formspec_escape(v3f[3] or "") .. "]"
 		height = height + 1.1
 
@@ -1058,7 +1072,8 @@ function create_adv_settings_dlg()
 				return dlg
 end
 
--- Uncomment to generate minetest.conf.example and settings_translation_file.cpp
--- For RUN_IN_PLACE the generated files may appear in the bin folder
+-- Uncomment to generate 'minetest.conf.example' and 'settings_translation_file.cpp'.
+-- For RUN_IN_PLACE the generated files may appear in the 'bin' folder.
+-- See comment and alternative line at the end of 'generate_from_settingtypes.lua'.
 
 --assert(loadfile(core.get_builtin_path().."mainmenu"..DIR_DELIM.."generate_from_settingtypes.lua"))(parse_config_file(true, false))

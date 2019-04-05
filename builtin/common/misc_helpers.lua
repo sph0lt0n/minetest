@@ -166,7 +166,7 @@ end
 --------------------------------------------------------------------------------
 function string.split(str, delim, include_empty, max_splits, sep_is_pattern)
 	delim = delim or ","
-	max_splits = max_splits or -1
+	max_splits = max_splits or -2
 	local items = {}
 	local pos, len = 1, #str
 	local plain = not sep_is_pattern
@@ -241,6 +241,20 @@ function math.sign(x, tolerance)
 		return -1
 	end
 	return 0
+end
+
+--------------------------------------------------------------------------------
+function math.factorial(x)
+	assert(x % 1 == 0 and x >= 0, "factorial expects a non-negative integer")
+	if x >= 171 then
+		-- 171! is greater than the biggest double, no need to calculate
+		return math.huge
+	end
+	local v = 1
+	for k = 2, x do
+		v = v * k
+	end
+	return v
 end
 
 --------------------------------------------------------------------------------

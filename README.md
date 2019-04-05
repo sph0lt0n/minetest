@@ -5,7 +5,7 @@ Minetest
 [![Translation status](https://hosted.weblate.org/widgets/minetest/-/svg-badge.svg)](https://hosted.weblate.org/engage/minetest/?utm_source=widget)
 [![License](https://img.shields.io/badge/license-LGPLv2.1%2B-blue.svg)](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html)
 
-An InfiniMiner/Minecraft inspired game.
+Minetest is a free open-source voxel game engine with easy modding and game creation.
 
 Copyright (C) 2010-2018 Perttu Ahola <celeron55@gmail.com>
 and contributors (see source file comments and the version control log)
@@ -15,6 +15,19 @@ In case you downloaded the source code:
 If you downloaded the Minetest Engine source code in which this file is
 contained, you probably want to download the [Minetest Game](https://github.com/minetest/minetest_game/)
 project too. See its README.txt for more information.
+
+Table of Contents
+------------------
+
+1. [Further Documentation](#further-documentation)
+2. [Default Controls](#default-controls)
+3. [Paths](#paths)
+4. [Configuration File](#configuration-file)
+5. [Command-line Options](#command-line-options)
+6. [Compiling](#compiling)
+7. [Docker](#docker)
+8. [Version Scheme](#version-scheme)
+
 
 Further documentation
 ----------------------
@@ -52,6 +65,7 @@ Some can be changed in the key config dialog in the settings tab.
 | +                             | Increase view range                                            |
 | -                             | Decrease view range                                            |
 | K                             | Enable/disable fly mode (needs fly privilege)                  |
+| L                             | Enable/disable pitch move mode                                 |
 | J                             | Enable/disable fast mode (needs fast privilege)                |
 | H                             | Enable/disable noclip mode (needs noclip privilege)            |
 | E                             | Move fast in fast mode                                         |
@@ -78,9 +92,13 @@ Locations:
 Where each location is on each platform:
 
 * Windows .zip / RUN_IN_PLACE source:
-    * `bin`   = `bin`
-    * `share` = `.`
-    * `user`  = `.`
+    * bin   = `bin`
+    * share = `.`
+    * user  = `.`
+* Windows installed:
+    * $bin   = `C:\Program Files\Minetest\bin (Depends on the install location)`
+    * $share = `C:\Program Files\Minetest (Depends on the install location)`
+    * $user  = `%Appdata%\Minetest`
 * Linux installed:
     * `bin`   = `/usr/bin`
     * `share` = `/usr/share/minetest`
@@ -133,7 +151,7 @@ For Fedora users:
 #### Download
 
 You can install Git for easily keeping your copy up to date.
-If you don’t want Git, read below on how to get the source without Git.  
+If you don’t want Git, read below on how to get the source without Git.
 This is an example for installing Git on Debian/Ubuntu:
 
     sudo apt install git
@@ -217,7 +235,7 @@ General options and their default values:
     VERSION_EXTRA=             - Text to append to version (e.g. VERSION_EXTRA=foobar -> Minetest 0.4.9-foobar)
 
 Library specific options:
-    
+
     BZIP2_INCLUDE_DIR               - Linux only; directory where bzlib.h is located
     BZIP2_LIBRARY                   - Linux only; path to libbz2.a/libbz2.so
     CURL_DLL                        - Only if building with cURL on Windows; path to libcurl.dll
@@ -275,7 +293,7 @@ Library specific options:
 * This section is outdated. In addition to what is described here:
   * In addition to minetest, you need to download [minetest_game](https://github.com/minetest/minetest_game).
   * If you wish to have sound support, you need libogg, libvorbis and libopenal
-  
+
 * You need:
 	* CMake:
 		http://www.cmake.org/cmake/resources/software.html
@@ -354,7 +372,7 @@ Library specific options:
 	* It will warn about missing stuff, ignore that at this point. (later don't)
 	* Make sure the configuration is as follows
 	  (note that the versions may differ for you):
-	  
+
                 BUILD_CLIENT             [X]
                 BUILD_SERVER             [ ]
                 CMAKE_BUILD_TYPE         Release
@@ -369,7 +387,7 @@ Library specific options:
                 GETTEXT_INCLUDE_DIR      DIR/gettext/include
                 GETTEXT_LIBRARIES        DIR/gettext/lib/intl.lib
                 GETTEXT_MSGFMT           DIR/gettext/bin/msgfmt
-	
+
 	* If CMake complains it couldn't find SQLITE3, choose "Advanced" box on the
 	  right top corner, then specify the location of SQLITE3_INCLUDE_DIR and
 	  SQLITE3_LIBRARY manually.
@@ -405,7 +423,7 @@ This is how we build Windows releases.
     set sourcedir=%CD%
     set installpath="C:\tmp\minetest_install"
     set irrlichtpath="C:\tmp\irrlicht-1.7.2"
-    
+
     set builddir=%sourcedir%\bvc10
     mkdir %builddir%
     pushd %builddir%
@@ -420,11 +438,51 @@ This is how we build Windows releases.
     popd
     echo Finished.
     exit /b 0
-    
+
     :fail
     popd
     echo Failed.
     exit /b 1
+
+### Windows Installer using WIX Toolset
+
+Requirements:
+* Visual Studio 2017
+* Wix Toolset
+
+In Visual Studio 2017 Installer select "Optional Features" -> "Wix Toolset"
+
+Build the binaries like described above, but make sure you unselect "RUN_IN_PLACE".
+
+Open the generated Project file with VS. Right click "PACKAGE" and choose "Generate".
+It may take some minutes to generate the installer.
+
+
+Docker
+------
+We provide Minetest server docker images using the Gitlab mirror registry.
+
+Images are built on each commit and available using the following tag scheme:
+
+* `registry.gitlab.com/minetest/minetest/server:latest` (latest build)
+* `registry.gitlab.com/minetest/minetest/server:<branch/tag>` (current branch or current tag)
+* `registry.gitlab.com/minetest/minetest/server:<commit-id>` (current commit id)
+
+If you want to test it on a docker server, you can easily run:
+
+	sudo docker run registry.gitlab.com/minetest/minetest/server:<docker tag>
+
+If you want to use it in a production environment you should use volumes bound to the docker host
+to persist data and modify the configuration:
+
+	sudo docker create -v /home/minetest/data/:/var/lib/minetest/ -v /home/minetest/conf/:/etc/minetest/ registry.gitlab.com/minetest/minetest/server:master
+
+Data will be written to `/home/minetest/data` on the host, and configuration will be read from `/home/minetest/conf/minetest.conf`.
+
+Note: If you don't understand the previous commands, please read the official Docker documentation before use.
+
+You can also host your minetest server inside a Kubernetes cluster. See our example implementation in `misc/kubernetes.yml`.
+
 
 Version scheme
 --------------
@@ -437,6 +495,6 @@ patch is set to 0.
 - Patch is incremented when the release only contains bugfixes and very
 minor/trivial features considered necessary.
 
-Since 5.0.0-dev and 0.4.17-dev, the dev notation refers to the next release, 
-i.e.: 5.0.0-dev is the development version leading to 5.0.0. 
+Since 5.0.0-dev and 0.4.17-dev, the dev notation refers to the next release,
+i.e.: 5.0.0-dev is the development version leading to 5.0.0.
 Prior to that we used `previous_version-dev`.

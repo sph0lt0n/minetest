@@ -72,6 +72,9 @@ enable_build_where_you_stand (Build inside player) bool false
 #    This requires the "fly" privilege on the server.
 free_move (Flying) bool false
 
+#    If enabled, makes move directions relative to the player's pitch when flying or swimming.
+pitch_move (Pitch move mode) bool false
+
 #    Fast movement (via the "special" key).
 #    This requires the "fast" privilege on the server.
 fast_move (Fast movement) bool false
@@ -110,6 +113,9 @@ always_fly_fast (Always fly and fast) bool true
 #    The time in seconds it takes between repeated right clicks when holding the right
 #    mouse button.
 repeat_rightclick_time (Rightclick repetition interval) float 0.25
+
+#    Automatically jump up single-node obstacles.
+autojump (Automatic jumping) bool false
 
 #    Prevent digging and placing from repeating when holding the mouse buttons.
 #    Enable this when you dig or place too often by accident.
@@ -204,6 +210,10 @@ keymap_rangeselect (Range select key) key KEY_KEY_R
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
 keymap_freemove (Fly key) key KEY_KEY_K
 
+#    Key for toggling pitch move mode.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_pitchmove (Pitch move key) key KEY_KEY_P
+
 #    Key for toggling fast mode.
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
 keymap_fastmove (Fast key) key KEY_KEY_J
@@ -234,7 +244,7 @@ keymap_decrease_volume (Dec. volume key) key
 
 #    Key for toggling autoforward.
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
-keymap_autoforward (Automatic forwards key) key
+keymap_autoforward (Automatic forward key) key
 
 #    Key for toggling cinematic mode.
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
@@ -336,17 +346,53 @@ keymap_slot19 (Hotbar slot 19 key) key
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
 keymap_slot20 (Hotbar slot 20 key) key
 
-#    Key for selecting the 21th hotbar slot.
+#    Key for selecting the 21st hotbar slot.
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
 keymap_slot21 (Hotbar slot 21 key) key
 
-#    Key for selecting the 22th hotbar slot.
+#    Key for selecting the 22nd hotbar slot.
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
 keymap_slot22 (Hotbar slot 22 key) key
 
-#    Key for selecting the 23th hotbar slot.
+#    Key for selecting the 23rd hotbar slot.
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
 keymap_slot23 (Hotbar slot 23 key) key
+
+#    Key for selecting the 24th hotbar slot.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_slot24 (Hotbar slot 24 key) key
+
+#    Key for selecting the 25th hotbar slot.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_slot25 (Hotbar slot 25 key) key
+
+#    Key for selecting the 26th hotbar slot.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_slot26 (Hotbar slot 26 key) key
+
+#    Key for selecting the 27th hotbar slot.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_slot27 (Hotbar slot 27 key) key
+
+#    Key for selecting the 28th hotbar slot.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_slot28 (Hotbar slot 28 key) key
+
+#    Key for selecting the 29th hotbar slot.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_slot29 (Hotbar slot 29 key) key
+
+#    Key for selecting the 30th hotbar slot.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_slot30 (Hotbar slot 30 key) key
+
+#    Key for selecting the 31st hotbar slot.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_slot31 (Hotbar slot 31 key) key
+
+#    Key for selecting the 32nd hotbar slot.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+keymap_slot32 (Hotbar slot 32 key) key
 
 #    Key for toggling the display of the HUD.
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
@@ -629,7 +675,7 @@ view_bobbing_amount (View bobbing factor) float 1.0
 
 #    Multiplier for fall bobbing.
 #    For example: 0 for no view bobbing; 1.0 for normal; 2.0 for double.
-fall_bobbing_amount (Fall bobbing factor) float 0.0
+fall_bobbing_amount (Fall bobbing factor) float 0.03
 
 #    3D support.
 #    Currently supported:
@@ -866,6 +912,10 @@ serverlist_file (Serverlist file) string favoriteservers.txt
 #    0 to disable queueing and -1 to make the queue size unlimited.
 max_out_chat_queue_size (Maximum size of the out chat queue) int 20
 
+#    Enable register confirmation when connecting to server.
+#    If disabled, new account will be registered automatically.
+enable_register_confirmation (Enable register confirmation) bool true
+
 [*Advanced]
 
 #    Timeout for client to remove unused map data from memory.
@@ -892,7 +942,7 @@ server_address (Server address) string game.minetest.net
 #    Homepage of server, to be displayed in the serverlist.
 server_url (Server URL) string https://minetest.net
 
-#    Automaticaly report to the serverlist.
+#    Automatically report to the serverlist.
 server_announce (Announce server) bool false
 
 #    Announce to this serverlist.
@@ -922,8 +972,7 @@ strict_protocol_version_checking (Strict protocol checking) bool false
 #    Files that are not present will be fetched the usual way.
 remote_media (Remote media) string
 
-#    Enable/disable running an IPv6 server.  An IPv6 server may be restricted
-#    to IPv6 clients, depending on system configuration.
+#    Enable/disable running an IPv6 server.
 #    Ignored if bind_address is set.
 ipv6_server (IPv6 server) bool false
 
@@ -1024,7 +1073,7 @@ ask_reconnect_on_crash (Ask to reconnect after crash) bool false
 #    Setting this larger than active_block_range will also cause the server
 #    to maintain active objects up to this distance in the direction the
 #    player is looking. (This can avoid mobs suddenly disappearing from view)
-active_object_send_range_blocks (Active object send range) int 3
+active_object_send_range_blocks (Active object send range) int 4
 
 #    The radius of the volume of blocks around every player that is subject to the
 #    active block stuff, stated in mapblocks (16 nodes).
@@ -1034,7 +1083,7 @@ active_object_send_range_blocks (Active object send range) int 3
 active_block_range (Active block range) int 3
 
 #    From how far blocks are sent to clients, stated in mapblocks (16 nodes).
-max_block_send_distance (Max block send distance) int 9
+max_block_send_distance (Max block send distance) int 10
 
 #    Maximum number of forceloaded mapblocks.
 max_forceloaded_blocks (Maximum forceloaded blocks) int 16
@@ -1144,15 +1193,17 @@ block_send_optimize_distance (Block send optimize distance) int 4 2
 #    so that the utility of noclip mode is reduced.
 server_side_occlusion_culling (Server side occlusion culling) bool true
 
-#    Restricts the access of certain client-side functions on servers
-#    Combine these byteflags below to restrict client-side features:
-#    LOAD_CLIENT_MODS: 1 (disable client mods loading)
+#    Restricts the access of certain client-side functions on servers.
+#    Combine the byteflags below to restrict client-side features, or set to 0
+#    for no restrictions:
+#    LOAD_CLIENT_MODS: 1 (disable loading client-provided mods)
 #    CHAT_MESSAGES: 2 (disable send_chat_message call client-side)
 #    READ_ITEMDEFS: 4 (disable get_item_def call client-side)
 #    READ_NODEDEFS: 8 (disable get_node_def call client-side)
 #    LOOKUP_NODES_LIMIT: 16 (limits get_node call client-side to
 #    csm_restriction_noderange)
-csm_restriction_flags (Client side modding restrictions) int 30
+#    READ_PLAYERINFO: 32 (disable get_player_names call client-side)
+csm_restriction_flags (Client side modding restrictions) int 62
 
 #   If the CSM restriction for node range is enabled, get_node calls are limited
 #   to this distance from the player to the node.
@@ -1260,18 +1311,13 @@ curl_file_download_timeout (cURL file download timeout) int 300000
 high_precision_fpu (High-precision FPU) bool true
 
 #    Changes the main menu UI:
-#    -   Full:  Multple singleplayer worlds, game choice, texture pack chooser, etc.
+#    -   Full:  Multiple singleplayer worlds, game choice, texture pack chooser, etc.
 #    -   Simple: One singleplayer world, no game or texture pack choosers. May be
 #                necessary for smaller screens.
-#    -   Auto: Simple on Android, full on everything else.
-main_menu_style (Main menu style) enum auto auto,full,simple
+main_menu_style (Main menu style) enum full full,simple
 
 #    Replaces the default main menu with a custom one.
 main_menu_script (Main menu script) string
-
-main_menu_game_mgr (Main menu game manager) int 0
-
-main_menu_mod_mgr (Main menu mod manager) int 1
 
 #    Print the engine's profiling data in regular intervals (in seconds).
 #    0 = disable. Useful for developers.
@@ -1281,17 +1327,15 @@ profiler_print_interval (Engine profiling data print interval) int 0
 
 #    Name of map generator to be used when creating a new world.
 #    Creating a world in the main menu will override this.
-#    Current stable mapgens: v6, v7 (except floatlands).
-#    'stable' means the terrain shape in an existing world will not
-#    be changed in the future. Note that biomes are defined by games
-#    and may still change.
-mg_name (Mapgen name) enum v7 v5,v6,v7,flat,valleys,fractal,singlenode
+#    Current mapgens in a highly unstable state:
+#    -    The optional floatlands of v7 (disabled by default).
+mg_name (Mapgen name) enum v7 v5,v6,v7,valleys,carpathian,fractal,flat,singlenode
 
 #    Water surface level of the world.
 water_level (Water level) int 1
 
 #    From how far blocks are generated for clients, stated in mapblocks (16 nodes).
-max_block_generate_distance (Max block generate distance) int 6
+max_block_generate_distance (Max block generate distance) int 8
 
 #    Limit of map generation, in nodes, in all 6 directions from (0, 0, 0).
 #    Only mapchunks completely within the mapgen limit are generated.
@@ -1301,8 +1345,6 @@ mapgen_limit (Map generation limit) int 31000 0 31000
 #    Global map generation attributes.
 #    In Mapgen v6 the 'decorations' flag controls all decorations except trees
 #    and junglegrass, in all other mapgens this flag controls all decorations.
-#    Flags that are not enabled are not modified from the default.
-#    Flags starting with 'no' are used to explicitly disable them.
 mg_flags (Mapgen flags) flags caves,dungeons,light,decorations,biomes caves,dungeons,light,decorations,biomes,nocaves,nodungeons,nolight,nodecorations,nobiomes
 
 #    Whether dungeons occasionally project from the terrain.
@@ -1325,8 +1367,6 @@ mg_biome_np_humidity_blend (Humidity blend noise) noise_params_2d 0, 1.5, (8, 8,
 [*Mapgen V5]
 
 #    Map generation attributes specific to Mapgen v5.
-#    Flags that are not enabled are not modified from the default.
-#    Flags starting with 'no' are used to explicitly disable them.
 mgv5_spflags (Mapgen V5 specific flags) flags caverns caverns,nocaverns
 
 #    Controls width of tunnels, a smaller value creates wider tunnels.
@@ -1383,8 +1423,6 @@ mgv5_np_ground (Ground noise) noise_params_3d 0, 40, (80, 80, 80), 983240, 4, 0.
 #    The 'snowbiomes' flag enables the new 5 biome system.
 #    When the new biome system is enabled jungles are automatically enabled and
 #    the 'jungles' flag is ignored.
-#    Flags that are not enabled are not modified from the default.
-#    Flags starting with 'no' are used to explicitly disable them.
 mgv6_spflags (Mapgen V6 specific flags) flags jungles,biomeblend,mudflow,snowbiomes,trees jungles,biomeblend,mudflow,snowbiomes,flat,trees,nojungles,nobiomeblend,nomudflow,nosnowbiomes,noflat,notrees
 
 #    Deserts occur when np_biome exceeds this value.
@@ -1439,8 +1477,6 @@ mgv6_np_apple_trees (Apple trees noise) noise_params_2d 0, 1, (100, 100, 100), 3
 
 #    Map generation attributes specific to Mapgen v7.
 #    'ridges' enables the rivers.
-#    Flags that are not enabled are not modified from the default.
-#    Flags starting with 'no' are used to explicitly disable them.
 mgv7_spflags (Mapgen V7 specific flags) flags mountains,ridges,nofloatlands,caverns mountains,ridges,floatlands,caverns,nomountains,noridges,nofloatlands,nocaverns
 
 #    Y of mountain density gradient zero level. Used to shift mountains vertically.
@@ -1536,8 +1572,6 @@ mgv7_np_cave2 (Cave2 noise) noise_params_3d 0, 12, (67, 67, 67), 10325, 3, 0.5, 
 [*Mapgen Carpathian]
 
 #    Map generation attributes specific to Mapgen Carpathian.
-#    Flags that are not enabled are not modified from the default.
-#    Flags starting with 'no' are used to explicitly disable them.
 mgcarpathian_spflags (Mapgen Carpathian specific flags) flags caverns caverns,nocaverns
 
 #    Defines the base ground level.
@@ -1584,13 +1618,13 @@ mgcarpathian_np_height3 (Hilliness3 noise) noise_params_2d 0, 5, (509, 509, 509)
 #    Fourth of 4 2D noises that together define hill/mountain range height.
 mgcarpathian_np_height4 (Hilliness4 noise) noise_params_2d 0, 5, (631, 631, 631), 1583, 5, 0.5, 2.0, eased
 
-#    2D noise that controls the size/occurance of rolling hills.
+#    2D noise that controls the size/occurrence of rolling hills.
 mgcarpathian_np_hills_terrain (Rolling hills spread noise) noise_params_2d 1, 1, (1301, 1301, 1301), 1692, 3, 0.5, 2.0, eased
 
-#    2D noise that controls the size/occurance of ridged mountain ranges.
+#    2D noise that controls the size/occurrence of ridged mountain ranges.
 mgcarpathian_np_ridge_terrain (Ridge mountain spread noise) noise_params_2d 1, 1, (1889, 1889, 1889), 3568, 3, 0.5, 2.0, eased
 
-#    2D noise that controls the size/occurance of step mountain ranges.
+#    2D noise that controls the size/occurrence of step mountain ranges.
 mgcarpathian_np_step_terrain (Step mountain spread noise) noise_params_2d 1, 1, (1889, 1889, 1889), 4157, 3, 0.5, 2.0, eased
 
 #    2D noise that controls the shape/size of rolling hills.
@@ -1618,8 +1652,6 @@ mgcarpathian_np_cavern (Cavern noise) noise_params_3d 0, 1, (384, 128, 384), 723
 
 #    Map generation attributes specific to Mapgen flat.
 #    Occasional lakes and hills can be added to the flat world.
-#    Flags that are not enabled are not modified from the default.
-#    Flags starting with 'no' are used to explicitly disable them.
 mgflat_spflags (Mapgen Flat specific flags) flags nolakes,nohills lakes,hills,nolakes,nohills
 
 #    Y of flat ground.
@@ -1723,7 +1755,7 @@ mgfractal_iterations (Iterations) int 11
 #    an island, set all 3 numbers equal for the raw shape.
 mgfractal_scale (Scale) v3f (4096.0, 1024.0, 4096.0)
 
-#    (X,Y,Z) offset of fractal from world centre in units of 'scale'.
+#    (X,Y,Z) offset of fractal from world center in units of 'scale'.
 #    Can be used to move a desired point to (0, 0) to create a
 #    suitable spawn point, or to allow 'zooming in' on a desired
 #    point by increasing 'scale'.
@@ -1733,7 +1765,7 @@ mgfractal_scale (Scale) v3f (4096.0, 1024.0, 4096.0)
 #    Range roughly -2 to 2. Multiply by 'scale' for offset in nodes.
 mgfractal_offset (Offset) v3f (1.79, 0.0, 0.0)
 
-#    W co-ordinate of the generated 3D slice of a 4D fractal.
+#    W coordinate of the generated 3D slice of a 4D fractal.
 #    Determines which 3D slice of the 4D shape is generated.
 #    Alters the shape of the fractal.
 #    Has no effect on 3D fractals.
@@ -1783,7 +1815,7 @@ mgfractal_np_cave2 (Cave2 noise) noise_params_3d 0, 12, (67, 67, 67), 10325, 3, 
 
 #    Map generation attributes specific to Mapgen Valleys.
 #    'altitude_chill': Reduces heat with altitude.
-#    'humid_rivers': Increases humidity around rivers and where water pools.
+#    'humid_rivers': Increases humidity around rivers.
 #    'vary_river_depth': If enabled, low humidity and high heat causes rivers
 #    to become shallower and occasionally dry.
 #    'altitude_dry': Reduces humidity with altitude.
@@ -1881,7 +1913,29 @@ emergequeue_limit_diskonly (Limit of emerge queues on disk) int 64
 emergequeue_limit_generate (Limit of emerge queues to generate) int 64
 
 #    Number of emerge threads to use.
-#    Make this field blank or 0, or increase this number to use multiple threads.
-#    On multiprocessor systems, this will improve mapgen speed greatly at the cost
-#    of slightly buggy caves.
-num_emerge_threads (Number of emerge threads) int 0
+#    WARNING: Currently there are multiple bugs that may cause crashes when
+#    'num_emerge_threads' is larger than 1. Until this warning is removed it is
+#    strongly recommended this value is set to the default '1'.
+#    Value 0:
+#    -    Automatic selection. The number of emerge threads will be
+#    -    'number of processors - 2', with a lower limit of 1.
+#    Any other value:
+#    -    Specifies the number of emerge threads, with a lower limit of 1.
+#    WARNING: Increasing the number of emerge threads increases engine mapgen
+#    speed, but this may harm game performance by interfering with other
+#    processes, especially in singleplayer and/or when running Lua code in
+#    'on_generated'. For many users the optimum setting may be '1'.
+num_emerge_threads (Number of emerge threads) int 1
+
+[Online Content Repository]
+
+#    The URL for the content repository
+contentdb_url (ContentDB URL) string https://content.minetest.net
+
+#    Comma-separated list of flags to hide in the content repository.
+#    "nonfree" can be used to hide packages which do not qualify as 'free software',
+#    as defined by the Free Software Foundation.
+#    You can also specify content ratings.
+#    These flags are independent from Minetest versions,
+#    so see a full list at https://content.minetest.net/help/content_flags/
+contentdb_flag_blacklist (ContentDB Flag Blacklist) string nonfree, desktop_default

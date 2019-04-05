@@ -220,6 +220,7 @@ Server::Server(
 	m_itemdef(createItemDefManager()),
 	m_nodedef(createNodeDefManager()),
 	m_craftdef(createCraftDefManager()),
+	m_thread(new ServerThread(this)),
 	m_uptime(0),
 	m_clients(m_con),
 	m_admin_chat(iface),
@@ -257,10 +258,11 @@ Server::~Server()
 		if (kick_msg.empty()) {
 			kick_msg = g_settings->get("kick_msg_shutdown");
 		}
+		m_env->saveLoadedPlayers(true);
 		m_env->kickAllPlayers(SERVER_ACCESSDENIED_SHUTDOWN,
 			kick_msg, reconnect);
 	}
-	
+
 	actionstream << "Server: Shutting down" << std::endl;
 
 	// Do this before stopping the server in case mapgen callbacks need to access
@@ -319,9 +321,6 @@ void Server::init()
 	// Create world if it doesn't exist
 	if (!loadGameConfAndInitWorld(m_path_world, m_gamespec))
 		throw ServerError("Failed to initialize world");
-
-	// Create server thread
-	m_thread = new ServerThread(this);
 
 	// Create emerge manager
 	m_emerge = new EmergeManager(this);
@@ -861,6 +860,8 @@ void Server::AsyncRunStep(bool initial_step)
 		// We'll log the amount of each
 		Profiler prof;
 
+		std::list<v3s16> node_meta_updates;
+
 		while (!m_unsent_map_edit_queue.empty()) {
 			MapEditEvent* event = m_unsent_map_edit_queue.front();
 			m_unsent_map_edit_queue.pop();
@@ -883,11 +884,22 @@ void Server::AsyncRunStep(bool initial_step)
 				sendRemoveNode(event->p, &far_players,
 						disable_single_change_sending ? 5 : 30);
 				break;
-			case MEET_BLOCK_NODE_METADATA_CHANGED:
-				infostream << "Server: MEET_BLOCK_NODE_METADATA_CHANGED" << std::endl;
-						prof.add("MEET_BLOCK_NODE_METADATA_CHANGED", 1);
-						m_clients.markBlockposAsNotSent(event->p);
+			case MEET_BLOCK_NODE_METADATA_CHANGED: {
+				verbosestream << "Server: MEET_BLOCK_NODE_METADATA_CHANGED" << std::endl;
+				prof.add("MEET_BLOCK_NODE_METADATA_CHANGED", 1);
+				if (!event->is_private_change) {
+					// Don't send the change yet. Collect them to eliminate dupes.
+					node_meta_updates.remove(event->p);
+					node_meta_updates.push_back(event->p);
+				}
+
+				if (MapBlock *block = m_env->getMap().getBlockNoCreateNoEx(
+						getNodeBlockPos(event->p))) {
+					block->raiseModified(MOD_STATE_WRITE_NEEDED,
+						MOD_REASON_REPORT_META_CHANGE);
+				}
 				break;
+			}
 			case MEET_OTHER:
 				infostream << "Server: MEET_OTHER" << std::endl;
 				prof.add("MEET_OTHER", 1);
@@ -931,6 +943,9 @@ void Server::AsyncRunStep(bool initial_step)
 			prof.print(verbosestream);
 		}
 
+		// Send all metadata updates
+		if (node_meta_updates.size())
+			sendMetadataChanged(node_meta_updates);
 	}
 
 	/*
@@ -980,7 +995,7 @@ void Server::AsyncRunStep(bool initial_step)
 
 void Server::Receive()
 {
-	session_t peer_id;
+	session_t peer_id = 0;
 	try {
 		NetworkPacket pkt;
 		m_con->Receive(&pkt);
@@ -1224,6 +1239,7 @@ Inventory* Server::getInventory(const InventoryLocation &loc)
 	}
 	return NULL;
 }
+
 void Server::setInventoryModified(const InventoryLocation &loc, bool playerSend)
 {
 	switch(loc.type){
@@ -1248,13 +1264,10 @@ void Server::setInventoryModified(const InventoryLocation &loc, bool playerSend)
 		break;
 	case InventoryLocation::NODEMETA:
 	{
-		v3s16 blockpos = getNodeBlockPos(loc.p);
-
-		MapBlock *block = m_env->getMap().getBlockNoCreateNoEx(blockpos);
-		if (block)
-			block->raiseModified(MOD_STATE_WRITE_NEEDED);
-
-		m_clients.markBlockposAsNotSent(blockpos);
+		MapEditEvent event;
+		event.type = MEET_BLOCK_NODE_METADATA_CHANGED;
+		event.p = loc.p;
+		m_env->getMap().dispatchEvent(&event);
 	}
 		break;
 	case InventoryLocation::DETACHED:
@@ -1544,7 +1557,7 @@ void Server::SendChatMessage(session_t peer_id, const ChatMessage &message)
 	NetworkPacket pkt(TOCLIENT_CHAT_MESSAGE, 0, peer_id);
 	u8 version = 1;
 	u8 type = message.type;
-	pkt << version << type << std::wstring(L"") << message.message << message.timestamp;
+	pkt << version << type << std::wstring(L"") << message.message << (u64)message.timestamp;
 
 	if (peer_id != PEER_ID_INEXISTENT) {
 		RemotePlayer *player = m_env->getPlayer(peer_id);
@@ -1563,7 +1576,11 @@ void Server::SendShowFormspecMessage(session_t peer_id, const std::string &forms
 	NetworkPacket pkt(TOCLIENT_SHOW_FORMSPEC, 0 , peer_id);
 	if (formspec.empty()){
 		//the client should close the formspec
-		m_formspec_state_data.erase(peer_id);
+		//but make sure there wasn't another one open in meantime
+		const auto it = m_formspec_state_data.find(peer_id);
+		if (it != m_formspec_state_data.end() && it->second == formname) {
+			m_formspec_state_data.erase(peer_id);
+		}
 		pkt.putLongString("");
 	} else {
 		m_formspec_state_data[peer_id] = formname;
@@ -1814,7 +1831,7 @@ void Server::SendPlayerHP(session_t peer_id)
 	m_script->player_event(playersao,"health_changed");
 
 	// Send to other clients
-	std::string str = gob_cmd_punched(playersao->readDamage(), playersao->getHP());
+	std::string str = gob_cmd_punched(playersao->getHP());
 	ActiveObjectMessage aom(playersao->getId(), true, str);
 	playersao->m_messages_out.push(aom);
 }
@@ -1835,14 +1852,14 @@ void Server::SendMovePlayer(session_t peer_id)
 	assert(sao);
 
 	NetworkPacket pkt(TOCLIENT_MOVE_PLAYER, sizeof(v3f) + sizeof(f32) * 2, peer_id);
-	pkt << sao->getBasePosition() << sao->getPitch() << sao->getYaw();
+	pkt << sao->getBasePosition() << sao->getLookPitch() << sao->getRotation().Y;
 
 	{
 		v3f pos = sao->getBasePosition();
 		verbosestream << "Server: Sending TOCLIENT_MOVE_PLAYER"
 				<< " pos=(" << pos.X << "," << pos.Y << "," << pos.Z << ")"
-				<< " pitch=" << sao->getPitch()
-				<< " yaw=" << sao->getYaw()
+				<< " pitch=" << sao->getLookPitch()
+				<< " yaw=" << sao->getRotation().Y
 				<< std::endl;
 	}
 
@@ -2154,6 +2171,57 @@ void Server::sendAddNode(v3s16 p, MapNode n, std::unordered_set<u16> *far_player
 
 		// Send as reliable
 		m_clients.send(client_id, 0, &pkt, true);
+	}
+
+	m_clients.unlock();
+}
+
+void Server::sendMetadataChanged(const std::list<v3s16> &meta_updates, float far_d_nodes)
+{
+	float maxd = far_d_nodes * BS;
+	NodeMetadataList meta_updates_list(false);
+	std::vector<session_t> clients = m_clients.getClientIDs();
+
+	m_clients.lock();
+
+	for (session_t i : clients) {
+		RemoteClient *client = m_clients.lockedGetClientNoEx(i);
+		if (!client)
+			continue;
+
+		ServerActiveObject *player = m_env->getActiveObject(i);
+		v3f player_pos = player ? player->getBasePosition() : v3f();
+
+		for (const v3s16 &pos : meta_updates) {
+			NodeMetadata *meta = m_env->getMap().getNodeMetadata(pos);
+
+			if (!meta)
+				continue;
+
+			v3s16 block_pos = getNodeBlockPos(pos);
+			if (!client->isBlockSent(block_pos) || (player &&
+					player_pos.getDistanceFrom(intToFloat(pos, BS)) > maxd)) {
+				client->SetBlockNotSent(block_pos);
+				continue;
+			}
+
+			// Add the change to send list
+			meta_updates_list.set(pos, meta);
+		}
+		if (meta_updates_list.size() == 0)
+			continue;
+
+		// Send the meta changes
+		std::ostringstream os(std::ios::binary);
+		meta_updates_list.serialize(os, client->net_proto_version, false, true);
+		std::ostringstream oss(std::ios::binary);
+		compressZlib(os.str(), oss);
+
+		NetworkPacket pkt(TOCLIENT_NODEMETA_CHANGED, 0);
+		pkt.putLongString(oss.str());
+		m_clients.send(i, 0, &pkt, true);
+
+		meta_updates_list.clear();
 	}
 
 	m_clients.unlock();
@@ -2506,7 +2574,10 @@ void Server::sendDetachedInventory(const std::string &name, session_t peer_id)
 		// Serialization & NetworkPacket isn't a love story
 		std::ostringstream os(std::ios_base::binary);
 		inv_it->second->serialize(os);
-		pkt << os.str();
+
+		std::string os_str = os.str();
+		pkt << static_cast<u16>(os_str.size()); // HACK: to keep compatibility with 5.0.0 clients
+		pkt.putRawString(os_str);
 	}
 
 	if (peer_id == PEER_ID_INEXISTENT)
@@ -2801,8 +2872,13 @@ std::wstring Server::handleChat(const std::string &name, const std::wstring &wna
 				L"It was refused. Send a shorter message";
 	}
 
+	auto message = trim(wide_to_utf8(wmessage));
+	if (message.find_first_of("\n\r") != std::wstring::npos) {
+		return L"New lines are not permitted in chat messages";
+	}
+
 	// Run script hook, exit if script ate the chat message
-	if (m_script->on_chat_message(name, wide_to_utf8(wmessage)))
+	if (m_script->on_chat_message(name, message))
 		return L"";
 
 	// Line to send
@@ -2897,38 +2973,44 @@ PlayerSAO *Server::getPlayerSAO(session_t peer_id)
 std::wstring Server::getStatusString()
 {
 	std::wostringstream os(std::ios_base::binary);
-	os<<L"# Server: ";
+	os << L"# Server: ";
 	// Version
-	os<<L"version="<<narrow_to_wide(g_version_string);
+	os << L"version=" << narrow_to_wide(g_version_string);
 	// Uptime
-	os<<L", uptime="<<m_uptime.get();
+	os << L", uptime=" << m_uptime.get();
 	// Max lag estimate
-	os<<L", max_lag="<<m_env->getMaxLagEstimate();
+	os << L", max_lag=" << (m_env ? m_env->getMaxLagEstimate() : 0);
+
 	// Information about clients
 	bool first = true;
-	os<<L", clients={";
-	std::vector<session_t> clients = m_clients.getClientIDs();
-	for (session_t client_id : clients) {
-		// Get player
-		RemotePlayer *player = m_env->getPlayer(client_id);
-		// Get name of player
-		std::wstring name = L"unknown";
-		if (player)
-			name = narrow_to_wide(player->getName());
-		// Add name to information string
-		if(!first)
-			os << L", ";
-		else
-			first = false;
-		os << name;
+	os << L", clients={";
+	if (m_env) {
+		std::vector<session_t> clients = m_clients.getClientIDs();
+		for (session_t client_id : clients) {
+			RemotePlayer *player = m_env->getPlayer(client_id);
+
+			// Get name of player
+			std::wstring name = L"unknown";
+			if (player)
+				name = narrow_to_wide(player->getName());
+
+			// Add name to information string
+			if (!first)
+				os << L", ";
+			else
+				first = false;
+
+			os << name;
+		}
 	}
 	os << L"}";
 
-	if (!((ServerMap*)(&m_env->getMap()))->isSavingEnabled())
-		os<<std::endl<<L"# Server: "<<" WARNING: Map saving is disabled.";
+	if (m_env && !((ServerMap*)(&m_env->getMap()))->isSavingEnabled())
+		os << std::endl << L"# Server: " << " WARNING: Map saving is disabled.";
 
 	if (!g_settings->get("motd").empty())
-		os<<std::endl<<L"# Server: "<<narrow_to_wide(g_settings->get("motd"));
+		os << std::endl << L"# Server: " << narrow_to_wide(g_settings->get("motd"));
+
 	return os.str();
 }
 

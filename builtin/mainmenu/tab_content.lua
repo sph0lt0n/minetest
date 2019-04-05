@@ -134,9 +134,13 @@ local function get_formspec(tabview, name, tabdata)
 		end
 
 		retval = retval .. "textarea[5.85,2.2;6.35,2.9;;" ..
-			fgettext("Information:") .. ";" .. desc .. "]" ..
-			"button[5.5,4.65;3.25,1;btn_mod_mgr_delete_mod;" ..
-			fgettext("Uninstall Package") .. "]"
+			fgettext("Information:") .. ";" .. desc .. "]"
+
+		if core.may_modify_path(selected_pkg.path) then
+			retval = retval ..
+				"button[5.5,4.65;3.25,1;btn_mod_mgr_delete_mod;" ..
+				fgettext("Uninstall Package") .. "]"
+		end
 	end
 	return retval
 end
@@ -164,10 +168,12 @@ local function handle_buttons(tabview, fields, tabname, tabdata)
 	end
 
 	if fields["btn_mod_mgr_rename_modpack"] ~= nil then
-		local dlg_renamemp = create_rename_modpack_dlg(tabdata.selected_pkg)
+		local mod = packages:get_list()[tabdata.selected_pkg]
+		local dlg_renamemp = create_rename_modpack_dlg(mod)
 		dlg_renamemp:set_parent(tabview)
 		tabview:hide()
 		dlg_renamemp:show()
+		packages = nil
 		return true
 	end
 

@@ -25,7 +25,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "server.h"
 #include "filesys.h"
 #include "version.h"
-#include "game.h"
+#include "client/game.h"
 #include "defaultsettings.h"
 #include "gettext.h"
 #include "log.h"
@@ -308,6 +308,8 @@ static void set_allowed_options(OptionList *allowed_options)
 			_("Set player name"))));
 	allowed_options->insert(std::make_pair("password", ValueSpec(VALUETYPE_STRING,
 			_("Set password"))));
+	allowed_options->insert(std::make_pair("password-file", ValueSpec(VALUETYPE_STRING,
+			_("Set password from contents of file"))));
 	allowed_options->insert(std::make_pair("go", ValueSpec(VALUETYPE_FLAG,
 			_("Disable main menu"))));
 	allowed_options->insert(std::make_pair("console", ValueSpec(VALUETYPE_FLAG,
@@ -405,14 +407,25 @@ static void setup_log_params(const Settings &cmd_args)
 	}
 
 	// Coloured log messages (see log.h)
+	std::string color_mode;
 	if (cmd_args.exists("color")) {
-		std::string mode = cmd_args.get("color");
-		if (mode == "auto")
+		color_mode = cmd_args.get("color");
+#if !defined(_WIN32)
+	} else {
+		char *color_mode_env = getenv("MT_LOGCOLOR");
+		if (color_mode_env)
+			color_mode = color_mode_env;
+#endif
+	}
+	if (color_mode != "") {
+		if (color_mode == "auto")
 			Logger::color_mode = LOG_COLOR_AUTO;
-		else if (mode == "always")
+		else if (color_mode == "always")
 			Logger::color_mode = LOG_COLOR_ALWAYS;
-		else
+		else if (color_mode == "never")
 			Logger::color_mode = LOG_COLOR_NEVER;
+		else
+			errorstream << "Invalid color mode: " << color_mode << std::endl;
 	}
 
 	// If trace is enabled, enable logging of certain things

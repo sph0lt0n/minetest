@@ -190,6 +190,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 		Add TOCLIENT_FORMSPEC_PREPEND
 	PROTOCOL VERSION 37:
 		Redo detached inventory sending
+		Add TOCLIENT_NODEMETA_CHANGED
+		New network float format
+		ContentFeatures version 13
+		Add full Euler rotations instead of just yaw
 */
 
 #define LATEST_PROTOCOL_VERSION 37
@@ -638,13 +642,19 @@ enum ToClientCommand
 	 	std::string channel name
 	 	u16 message length
 	 	std::string message
-	 */
+	*/
+
 	TOCLIENT_MODCHANNEL_SIGNAL = 0x58,
 	/*
 		u8 signal id
 	 	u16 channel name length
 	 	std::string channel name
-	 */
+	*/
+
+	TOCLIENT_NODEMETA_CHANGED = 0x59,
+	/*
+		serialized and compressed node metadata
+	*/
 
 	TOCLIENT_SRP_BYTES_S_B = 0x60,
 	/*
@@ -939,10 +949,15 @@ enum PlayerListModifer: u8
 
 enum CSMRestrictionFlags : u64 {
 	CSM_RF_NONE = 0x00000000,
-	CSM_RF_LOAD_CLIENT_MODS = 0x00000001, // Disable mods provided by clients
+	// Until server-sent CSM and verifying of builtin are complete,
+	// 'CSM_RF_LOAD_CLIENT_MODS' also disables loading 'builtin'.
+	// When those are complete, this should return to only being a restriction on the
+	// loading of client mods.
+	CSM_RF_LOAD_CLIENT_MODS = 0x00000001, // Don't load client-provided mods or 'builtin'
 	CSM_RF_CHAT_MESSAGES = 0x00000002, // Disable chat message sending from CSM
 	CSM_RF_READ_ITEMDEFS = 0x00000004, // Disable itemdef lookups
 	CSM_RF_READ_NODEDEFS = 0x00000008, // Disable nodedef lookups
 	CSM_RF_LOOKUP_NODES = 0x00000010, // Limit node lookups
+	CSM_RF_READ_PLAYERINFO = 0x00000020, // Disable player info lookups
 	CSM_RF_ALL = 0xFFFFFFFF,
 };
