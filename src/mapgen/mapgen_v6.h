@@ -55,8 +55,6 @@ enum BiomeV6Type
 
 
 struct MapgenV6Params : public MapgenParams {
-	u32 spflags = MGV6_JUNGLES | MGV6_SNOWBIOMES | MGV6_TREES |
-		MGV6_BIOMEBLEND | MGV6_MUDFLOW;
 	float freq_desert = 0.45f;
 	float freq_beach = 0.15f;
 	s16 dungeon_ymin = -31000;
@@ -79,6 +77,7 @@ struct MapgenV6Params : public MapgenParams {
 
 	void readParams(const Settings *settings);
 	void writeParams(Settings *settings) const;
+	void setDefaultSettings(Settings *settings);
 };
 
 
@@ -107,6 +106,8 @@ public:
 	NoiseParams *np_humidity;
 	NoiseParams *np_trees;
 	NoiseParams *np_apple_trees;
+
+	NoiseParams np_dungeons;
 
 	float freq_desert;
 	float freq_beach;
