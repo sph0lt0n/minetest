@@ -1018,16 +1018,15 @@ PlayerSAO* Server::StageTwoClientInit(session_t peer_id)
 	// Send Breath
 	SendPlayerBreath(playersao);
 
-	Address addr = getPeerAddress(player->getPeerId());
-	std::string ip_str = addr.serializeString();
-	actionstream<<player->getName() <<" [" << ip_str << "] joins game. " << std::endl;
 	/*
 		Print out action
 	*/
 	{
+		Address addr = getPeerAddress(player->getPeerId());
+		std::string ip_str = addr.serializeString();
 		const std::vector<std::string> &names = m_clients.getPlayerNames();
 
-		actionstream << player->getName() << " joins game. List of players: ";
+		actionstream << player->getName() << " [" << ip_str << "] joins game. List of players: ";
 
 		for (const std::string &name : names) {
 			actionstream << name << " ";
@@ -1718,17 +1717,62 @@ void Server::SendHUDSetParam(session_t peer_id, u16 param, const std::string &va
 	Send(&pkt);
 }
 
-void Server::SendSetSky(session_t peer_id, const video::SColor &bgcolor,
-		const std::string &type, const std::vector<std::string> &params,
-		bool &clouds)
+void Server::SendSetSky(session_t peer_id, const SkyboxParams &params)
 {
 	NetworkPacket pkt(TOCLIENT_SET_SKY, 0, peer_id);
-	pkt << bgcolor << type << (u16) params.size();
 
-	for (const std::string &param : params)
-		pkt << param;
+	// Handle prior clients here
+	if (m_clients.getProtocolVersion(peer_id) < 39) {
+		pkt << params.bgcolor << params.type << (u16) params.textures.size();
 
-	pkt << clouds;
+		for (const std::string& texture : params.textures)
+			pkt << texture;
+
+		pkt << params.clouds;
+	} else { // Handle current clients and future clients
+		pkt << params.bgcolor << params.type
+		<< params.clouds << params.sun_tint
+		<< params.moon_tint << params.tint_type;
+
+		if (params.type == "skybox") {
+			pkt << (u16) params.textures.size();
+			for (const std::string &texture : params.textures)
+				pkt << texture;
+		} else if (params.type == "regular") {
+			pkt << params.sky_color.day_sky << params.sky_color.day_horizon
+				<< params.sky_color.dawn_sky << params.sky_color.dawn_horizon
+				<< params.sky_color.night_sky << params.sky_color.night_horizon
+				<< params.sky_color.indoors;
+		}
+	}
+
+	Send(&pkt);
+}
+
+void Server::SendSetSun(session_t peer_id, const SunParams &params)
+{
+	NetworkPacket pkt(TOCLIENT_SET_SUN, 0, peer_id);
+	pkt << params.visible << params.texture
+		<< params.tonemap << params.sunrise
+		<< params.sunrise_visible << params.scale;
+
+	Send(&pkt);
+}
+void Server::SendSetMoon(session_t peer_id, const MoonParams &params)
+{
+	NetworkPacket pkt(TOCLIENT_SET_MOON, 0, peer_id);
+
+	pkt << params.visible << params.texture
+		<< params.tonemap << params.scale;
+
+	Send(&pkt);
+}
+void Server::SendSetStars(session_t peer_id, const StarParams &params)
+{
+	NetworkPacket pkt(TOCLIENT_SET_STARS, 0, peer_id);
+
+	pkt << params.visible << params.count
+		<< params.starcolor << params.scale;
 
 	Send(&pkt);
 }
@@ -1768,10 +1812,7 @@ void Server::SendTimeOfDay(session_t peer_id, u16 time, f32 time_speed)
 void Server::SendPlayerHP(session_t peer_id)
 {
 	PlayerSAO *playersao = getPlayerSAO(peer_id);
-	// In some rare case if the player is disconnected
-	// while Lua call l_punch, for example, this can be NULL
-	if (!playersao)
-		return;
+	assert(playersao);
 
 	SendHP(peer_id, playersao->getHP());
 	m_script->player_event(playersao,"health_changed");
@@ -2013,8 +2054,18 @@ void Server::SendPlayerSpeed(session_t peer_id, const v3f &added_vel)
 	Send(&pkt);
 }
 
+inline s32 Server::nextSoundId()
+{
+	s32 ret = m_next_sound_id;
+	if (m_next_sound_id == INT32_MAX)
+		m_next_sound_id = 0; // signed overflow is undefined
+	else
+		m_next_sound_id++;
+	return ret;
+}
+
 s32 Server::playSound(const SimpleSoundSpec &spec,
-		const ServerSoundParams &params)
+		const ServerSoundParams &params, bool ephemeral)
 {
 	// Find out initial position of sound
 	bool pos_exists = false;
@@ -2025,7 +2076,7 @@ s32 Server::playSound(const SimpleSoundSpec &spec,
 
 	// Filter destination clients
 	std::vector<session_t> dst_clients;
-	if(!params.to_player.empty()) {
+	if (!params.to_player.empty()) {
 		RemotePlayer *player = m_env->getPlayer(params.to_player.c_str());
 		if(!player){
 			infostream<<"Server::playSound: Player \""<<params.to_player
@@ -2045,6 +2096,9 @@ s32 Server::playSound(const SimpleSoundSpec &spec,
 			RemotePlayer *player = m_env->getPlayer(client_id);
 			if (!player)
 				continue;
+			if (!params.exclude_player.empty() &&
+					params.exclude_player == player->getName())
+				continue;
 
 			PlayerSAO *sao = player->getPlayerSAO();
 			if (!sao)
@@ -2063,27 +2117,32 @@ s32 Server::playSound(const SimpleSoundSpec &spec,
 		return -1;
 
 	// Create the sound
-	s32 id = m_next_sound_id++;
-	// The sound will exist as a reference in m_playing_sounds
-	m_playing_sounds[id] = ServerPlayingSound();
-	ServerPlayingSound &psound = m_playing_sounds[id];
-	psound.params = params;
-	psound.spec = spec;
+	s32 id;
+	ServerPlayingSound *psound = nullptr;
+	if (ephemeral) {
+		id = -1; // old clients will still use this, so pick a reserved ID
+	} else {
+		id = nextSoundId();
+		// The sound will exist as a reference in m_playing_sounds
+		m_playing_sounds[id] = ServerPlayingSound();
+		psound = &m_playing_sounds[id];
+		psound->params = params;
+		psound->spec = spec;
+	}
 
 	float gain = params.gain * spec.gain;
 	NetworkPacket pkt(TOCLIENT_PLAY_SOUND, 0);
 	pkt << id << spec.name << gain
 			<< (u8) params.type << pos << params.object
-			<< params.loop << params.fade << params.pitch;
+			<< params.loop << params.fade << params.pitch
+			<< ephemeral;
 
-	// Backwards compability
-	bool play_sound = gain > 0;
+	bool as_reliable = !ephemeral;
 
 	for (const u16 dst_client : dst_clients) {
-		if (play_sound || m_clients.getProtocolVersion(dst_client) >= 32) {
-			psound.clients.insert(dst_client);
-			m_clients.send(dst_client, 0, &pkt, true);
-		}
+		if (psound)
+			psound->clients.insert(dst_client);
+		m_clients.send(dst_client, 0, &pkt, as_reliable);
 	}
 	return id;
 }
@@ -2683,10 +2742,7 @@ void Server::sendDetachedInventories(session_t peer_id, bool incremental)
 void Server::DiePlayer(session_t peer_id, const PlayerHPChangeReason &reason)
 {
 	PlayerSAO *playersao = getPlayerSAO(peer_id);
-	// In some rare cases this can be NULL -- if the player is disconnected
-	// when a Lua function modifies l_punch, for example
-	if (!playersao)
-		return;
+	assert(playersao);
 
 	infostream << "Server::DiePlayer(): Player "
 			<< playersao->getPlayer()->getName()
@@ -3308,13 +3364,32 @@ void Server::setPlayerEyeOffset(RemotePlayer *player, const v3f &first, const v3
 	SendEyeOffset(player->getPeerId(), first, third);
 }
 
-void Server::setSky(RemotePlayer *player, const video::SColor &bgcolor,
-	const std::string &type, const std::vector<std::string> &params,
-	bool &clouds)
+void Server::setSky(RemotePlayer *player, const SkyboxParams &params)
 {
 	sanity_check(player);
-	player->setSky(bgcolor, type, params, clouds);
-	SendSetSky(player->getPeerId(), bgcolor, type, params, clouds);
+	player->setSky(params);
+	SendSetSky(player->getPeerId(), params);
+}
+
+void Server::setSun(RemotePlayer *player, const SunParams &params)
+{
+	sanity_check(player);
+	player->setSun(params);
+	SendSetSun(player->getPeerId(), params);
+}
+
+void Server::setMoon(RemotePlayer *player, const MoonParams &params)
+{
+	sanity_check(player);
+	player->setMoon(params);
+	SendSetMoon(player->getPeerId(), params);
+}
+
+void Server::setStars(RemotePlayer *player, const StarParams &params)
+{
+	sanity_check(player);
+	player->setStars(params);
+	SendSetStars(player->getPeerId(), params);
 }
 
 void Server::setClouds(RemotePlayer *player, const CloudParams &params)

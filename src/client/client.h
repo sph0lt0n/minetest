@@ -218,6 +218,9 @@ public:
 	void handleCommand_HudSetFlags(NetworkPacket* pkt);
 	void handleCommand_HudSetParam(NetworkPacket* pkt);
 	void handleCommand_HudSetSky(NetworkPacket* pkt);
+	void handleCommand_HudSetSun(NetworkPacket* pkt);
+	void handleCommand_HudSetMoon(NetworkPacket* pkt);
+	void handleCommand_HudSetStars(NetworkPacket* pkt);
 	void handleCommand_CloudParams(NetworkPacket* pkt);
 	void handleCommand_OverrideDayNightRatio(NetworkPacket* pkt);
 	void handleCommand_LocalPlayerAnimations(NetworkPacket* pkt);
@@ -367,7 +370,7 @@ public:
 	const NodeDefManager* getNodeDefManager() override;
 	ICraftDefManager* getCraftDefManager() override;
 	ITextureSource* getTextureSource();
-	virtual IShaderSource* getShaderSource();
+	virtual IWritableShaderSource* getShaderSource();
 	u16 allocateUnknownNodeId(const std::string &name) override;
 	virtual ISoundManager* getSoundManager();
 	MtEventManager* getEventManager();
@@ -561,7 +564,7 @@ private:
 	std::unordered_map<s32, int> m_sounds_server_to_client;
 	// And the other way!
 	std::unordered_map<int, s32> m_sounds_client_to_server;
-	// And relations to objects
+	// Relation of client id to object id
 	std::unordered_map<int, u16> m_sounds_to_objects;
 
 	// Map server hud ids to client hud ids
